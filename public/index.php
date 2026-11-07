@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-// 1. LÓGICA (W5): tudo em PHP aqui no topo.
+// 1. LÓGICA (W5): tudo em PHP aqui no topo; o HTML só aparece depois.
 require_once __DIR__ . '/../src/Cardapio.php';
 require_once __DIR__ . '/../src/Prato.php';
 require_once __DIR__ . '/../src/Bebida.php';
@@ -92,6 +92,25 @@ if ($pagina === 'item') {
     $mensagem404 = 'Página não encontrada.';
 }
 
+// --- Página do item: calcula o preço para a quantidade pedida (?quantidade=3) ---
+$quantidade = 1;
+$precoCalculado = null;
+$erroQuantidade = null;
+
+if ($pagina === 'item' && $item !== null) {
+    $pedida = filter_var(texto($_GET, 'quantidade', '1'), FILTER_VALIDATE_INT);
+    try {
+        if ($pedida === false) {
+            throw new Exception('Informe a quantidade como um número inteiro.');
+        }
+        $quantidade = $pedida;
+        $precoCalculado = $item->calcularPreco($pedida);
+    } catch (Exception $e) {
+        $erroQuantidade = $e->getMessage();
+        $status = 422;
+    }
+}
+
 // --- Dados usados pelo HTML ---
 $ativa = $pagina === 'item' ? 'cardapio' : $pagina;
 if ($status === 404) {
@@ -102,7 +121,12 @@ if ($status === 404) {
     $titulo = $menu[$pagina];
 }
 
-http_response_code($status);
+if ($status === 422) {
+    // O PHP não conhece o texto do 422, então o escrevemos à mão.
+    header('HTTP/1.1 422 Unprocessable Entity', true, 422);
+} else {
+    http_response_code($status);
+}
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!DOCTYPE html>
@@ -182,6 +206,21 @@ header('Content-Type: text/html; charset=utf-8');
       <dt>Preço base</dt><dd><?= e(dinheiro($item->getPreco())) ?></dd>
     </dl>
 
+    <h3>Calcular preço</h3>
+    <form method="get" action="" class="linha">
+      <input type="hidden" name="pagina" value="item">
+      <input type="hidden" name="numero" value="<?= e($numeroItem) ?>">
+      <label>Quantidade
+        <input type="text" name="quantidade" inputmode="numeric" value="<?= e($quantidade) ?>">
+      </label>
+      <button type="submit" class="botao">Calcular</button>
+    </form>
+    <?php if ($erroQuantidade !== null): ?>
+      <p class="erro" role="alert"><?= e($erroQuantidade) ?></p>
+    <?php elseif ($precoCalculado !== null): ?>
+      <p class="ok"><?= e($quantidade) ?> unidade(s): <strong><?= e(dinheiro($precoCalculado)) ?></strong></p>
+    <?php endif; ?>
+
     <p>
       <a class="botao secundario" href="?pagina=cardapio">Voltar ao cardápio</a>
     </p>
@@ -214,7 +253,7 @@ header('Content-Type: text/html; charset=utf-8');
   </main>
 
   <footer class="rodape">
-    Trabalho individual de Programação Web I · IFCE Campus Boa Viagem
+    Trabalho OO de Programação Web I 
   </footer>
 </body>
 </html>
