@@ -70,6 +70,7 @@ $menu = [
     'inicio' => 'Início',
     'cardapio' => 'Cardápio',
     'comanda' => 'Comanda',
+    'cadastrar' => 'Cadastrar item',
 ];
 
 // --- W1: escolha da página pela query string ---
@@ -134,6 +135,11 @@ if ($pagina === 'item' && $item !== null) {
         $status = 422;
     }
 }
+
+// --- W3: formulário POST que cria um objeto ---
+$erro = null;
+$criado = null;
+$valores = ['tipo' => 'prato', 'nome' => '', 'preco' => '', 'extra' => false];
 
 // --- Dados usados pelo HTML ---
 $ativa = $pagina === 'item' ? 'cardapio' : $pagina;
@@ -277,6 +283,41 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
     <p><a class="botao secundario" href="?pagina=comanda&amp;formato=json">Ver em JSON</a></p>
 
+<?php elseif ($pagina === 'cadastrar'): ?>
+    <h2>Cadastrar item no cardápio</h2>
+    <form method="post" action="?pagina=cadastrar" class="formulario" novalidate>
+      <label>Tipo
+        <select name="tipo">
+          <option value="prato"<?= $valores['tipo'] === 'prato' ? ' selected' : '' ?>>Prato</option>
+          <option value="bebida"<?= $valores['tipo'] === 'bebida' ? ' selected' : '' ?>>Bebida</option>
+          <option value="sobremesa"<?= $valores['tipo'] === 'sobremesa' ? ' selected' : '' ?>>Sobremesa</option>
+        </select>
+      </label>
+      <label>Nome
+        <input type="text" name="nome" value="<?= e($valores['nome']) ?>">
+      </label>
+      <label>Preço (R$)
+        <input type="text" name="preco" inputmode="decimal" value="<?= e($valores['preco']) ?>">
+      </label>
+      <label class="check">
+        <input type="checkbox" name="extra"<?= $valores['extra'] ? ' checked' : '' ?>>
+        Prato executivo, bebida gelada ou sobremesa diet
+      </label>
+      <button type="submit" class="botao">Cadastrar</button>
+    </form>
+
+    <?php if ($erro !== null): ?>
+      <p class="erro" role="alert">Não foi possível cadastrar: <?= e($erro) ?></p>
+    <?php elseif ($criado !== null): ?>
+      <div class="ok">
+        <p>
+          <strong><?= e($criado->getTipo()) ?> "<?= e($criado->getNome()) ?>"</strong>
+          criado por <?= e(dinheiro($criado->getPreco())) ?>.
+          Preço de 3 unidades: <?= e(dinheiro($criado->calcularPreco(3))) ?>.
+        </p>
+        <p>O cardápio agora tem <?= e(count($cardapio->getItens())) ?> itens, mas o item só existe nesta resposta (os dados não são gravados).</p>
+      </div>
+    <?php endif; ?>
 <?php endif; ?>
   </main>
 
