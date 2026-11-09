@@ -20,7 +20,7 @@ function dinheiro(float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
-/** Lê um valor de requisição como texto. Se não for texto (ex.: ?pagina[]=x), devolve ''. */
+/** Lê um valor de $_GET ou $_POST como texto. Se não for texto (ex.: ?pagina[]=x), devolve ''. */
 function texto(array $origem, string $chave, string $padrao = ''): string
 {
     $valor = $origem[$chave] ?? $padrao;
@@ -73,7 +73,8 @@ $menu = [
 ];
 
 // --- W1: escolha da página pela query string ---
-$pagina = texto($_GET, 'pagina', 'inicio');
+$formato = texto($_GET, 'formato');
+$pagina = texto($_GET, 'pagina', $formato === 'json' ? 'cardapio' : 'inicio');
 
 $status = 200;
 $mensagem404 = '';
@@ -92,7 +93,30 @@ if ($pagina === 'item') {
     $mensagem404 = 'Página não encontrada.';
 }
 
-// --- Página do item: calcula o preço para a quantidade pedida (?quantidade=3) ---
+// --- W2: rota JSON (?formato=json) ---
+if ($formato === 'json') {
+    header('Content-Type: application/json; charset=utf-8');
+
+    if ($status === 200 && !in_array($pagina, ['cardapio', 'comanda', 'item'], true)) {
+        $status = 404;
+        $mensagem404 = 'Esta página não tem versão em JSON.';
+    }
+    if ($status !== 200) {
+        http_response_code($status);
+        echo json_encode(['erro' => $mensagem404], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $dados = match ($pagina) {
+        'cardapio' => $cardapio->paraArray(),
+        'comanda' => $comanda->paraArray(),
+        'item' => $item->paraArray(),
+    };
+    echo json_encode($dados, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    exit;
+}
+
+// --- Página do item: calcula o preço para a quantidade pedida ---
 $quantidade = 1;
 $precoCalculado = null;
 $erroQuantidade = null;
@@ -173,6 +197,7 @@ header('Content-Type: text/html; charset=utf-8');
     </div>
     <p>
       <a class="botao" href="?pagina=cardapio">Ver o cardápio</a>
+      <a class="botao secundario" href="?pagina=cardapio&amp;formato=json">Cardápio em JSON</a>
     </p>
 
 <?php elseif ($pagina === 'cardapio'): ?>
@@ -197,6 +222,7 @@ header('Content-Type: text/html; charset=utf-8');
         </tbody>
       </table>
     </div>
+    <p><a class="botao secundario" href="?pagina=cardapio&amp;formato=json">Ver em JSON</a></p>
 
 <?php elseif ($pagina === 'item' && $item !== null): ?>
     <h2><?= e($item->getNome()) ?></h2>
@@ -223,6 +249,7 @@ header('Content-Type: text/html; charset=utf-8');
 
     <p>
       <a class="botao secundario" href="?pagina=cardapio">Voltar ao cardápio</a>
+      <a class="botao secundario" href="?pagina=item&amp;numero=<?= e($numeroItem) ?>&amp;formato=json">Ver em JSON</a>
     </p>
 
 <?php elseif ($pagina === 'comanda'): ?>
@@ -248,12 +275,13 @@ header('Content-Type: text/html; charset=utf-8');
         </tfoot>
       </table>
     </div>
+    <p><a class="botao secundario" href="?pagina=comanda&amp;formato=json">Ver em JSON</a></p>
 
 <?php endif; ?>
   </main>
 
   <footer class="rodape">
-    Trabalho OO de Programação Web I 
+    Trabalho individual de Programação Web I · IFCE Campus Boa Viagem
   </footer>
 </body>
 </html>
