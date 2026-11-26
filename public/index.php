@@ -141,6 +141,33 @@ $erro = null;
 $criado = null;
 $valores = ['tipo' => 'prato', 'nome' => '', 'preco' => '', 'extra' => false];
 
+if ($pagina === 'cadastrar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $valores['tipo'] = texto($_POST, 'tipo');
+    $valores['nome'] = texto($_POST, 'nome');
+    $valores['preco'] = texto($_POST, 'preco');
+    $valores['extra'] = isset($_POST['extra']);
+
+    try {
+        $textoPreco = str_replace(',', '.', trim($valores['preco']));
+        if (!is_numeric($textoPreco) || !is_finite((float) $textoPreco)) {
+            throw new Exception('Informe o preço com números, por exemplo 12,50.');
+        }
+        $preco = (float) $textoPreco;
+
+        $criado = match ($valores['tipo']) {
+            'prato' => new Prato($valores['nome'], $preco, $valores['extra']),
+            'bebida' => new Bebida($valores['nome'], $preco, $valores['extra']),
+            'sobremesa' => new Sobremesa($valores['nome'], $preco, $valores['extra']),
+            default => throw new Exception('Escolha um tipo de item válido.'),
+        };
+        $cardapio->adicionarItem($criado);
+    } catch (Exception $e) {
+        $erro = $e->getMessage();
+        $criado = null;
+        $status = 422;
+    }
+}
+
 // --- Dados usados pelo HTML ---
 $ativa = $pagina === 'item' ? 'cardapio' : $pagina;
 if ($status === 404) {
@@ -152,7 +179,6 @@ if ($status === 404) {
 }
 
 if ($status === 422) {
-    // O PHP não conhece o texto do 422, então o escrevemos à mão.
     header('HTTP/1.1 422 Unprocessable Entity', true, 422);
 } else {
     http_response_code($status);
