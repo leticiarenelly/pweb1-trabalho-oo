@@ -18,7 +18,7 @@ function titulo(string $texto): void
     echo "\n=== {$texto} ===\n";
 }
 
-/** Executa $acao e confirma que uma Exception foi lançada (a regra recusou). */
+/** Executa $acao e confirma que uma Exception foi lançada.*/
 function esperarRecusa(string $descricao, callable $acao): void
 {
     try {
@@ -29,7 +29,7 @@ function esperarRecusa(string $descricao, callable $acao): void
     }
 }
 
-/** Compara o preço calculado com o esperado (conta feita à mão). */
+/** Compara o preço calculado com o valor esperado. */
 function conferirValor(string $descricao, float $esperado, float $obtido): void
 {
     if (abs($esperado - $obtido) < 0.001) {
@@ -40,6 +40,7 @@ function conferirValor(string $descricao, float $esperado, float $obtido): void
 }
 
 titulo('1. Cardápio e polimorfismo (mesmo método, respostas diferentes)');
+
 $cardapio = new Cardapio('Sabor do Sertão');
 $cardapio->adicionarItem(new Prato('Baião de dois', 28.00));
 $cardapio->adicionarItem(new Prato('Carne de sol executivo', 35.00, true));
@@ -54,6 +55,7 @@ foreach ($cardapio->getItens() as $item) {
 }
 
 titulo('2. Comanda: composição (adicionar itens e calcular o total)');
+
 $comanda = new Comanda(5);
 $comanda->adicionarItem(new ItemComanda($cardapio->buscarPorNumero(2), 2)); // 2 x 35 + 2 x 4 = 78
 $comanda->adicionarItem(new ItemComanda($cardapio->buscarPorNumero(3), 2)); // 2 x 8 + 2 x 1 = 18
@@ -66,28 +68,33 @@ foreach ($comanda->getItens() as $linha) {
 echo 'Total da mesa ' . $comanda->getNumeroMesa() . ': ' . dinheiro($comanda->calcularTotal()) . "\n";
 
 titulo('3. Regras de negócio recusadas (throw new Exception + try/catch)');
+
 esperarRecusa('prato com preço zero', fn() => new Prato('Prato grátis', 0));
 esperarRecusa('item com nome vazio', fn() => new Bebida('   ', 5.00));
 esperarRecusa('alterar o preço para valor negativo', fn() => $cardapio->getItens()[0]->setPreco(-10));
 esperarRecusa('item de cardápio repetido', fn() => $cardapio->adicionarItem(new Prato('baião de dois', 30.00)));
+esperarRecusa('item repetido, com maiúsculas e acento', fn() => $cardapio->adicionarItem(new Prato('BAIÃO DE DOIS', 30.00)));
+esperarRecusa('item repetido, sem o acento', fn() => $cardapio->adicionarItem(new Prato('baiao de dois', 30.00)));
 esperarRecusa('quantidade zero na comanda', fn() => new ItemComanda($cardapio->buscarPorNumero(1), 0));
 esperarRecusa('cálculo de preço com quantidade negativa', fn() => $cardapio->buscarPorNumero(1)->calcularPreco(-1));
 esperarRecusa('mesa número zero', fn() => new Comanda(0));
 esperarRecusa('fechar comanda vazia', fn() => (new Comanda(7))->fechar());
 
-
 titulo('4. Fechar a comanda e tentar usar depois');
+
 $comanda->fechar();
 echo 'Comanda fechada? ' . ($comanda->isFechada() ? 'sim' : 'não') . "\n";
 esperarRecusa('adicionar item em comanda fechada', fn() => $comanda->adicionarItem(new ItemComanda($cardapio->buscarPorNumero(1), 1)));
 esperarRecusa('fechar a comanda duas vezes', fn() => $comanda->fechar());
 
 titulo('5. paraArray() e json_encode (o que a rota ?formato=json vai devolver)');
+
 echo json_encode($comanda->paraArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
 echo "\nBusca de item inexistente: ";
 echo $cardapio->buscarPorNumero(99) === null ? "null (a página vai responder 404)\n" : "ERRO: encontrou um item\n";
 
 titulo('6. Regras de preço conferidas com o valor esperado');
+
 $simples = new Prato('Baião de dois', 28.00);
 $executivo = new Prato('Carne de sol executivo', 35.00, true);
 conferirValor('prato simples, 3 unidades (3 x 28,00)', 84.00, $simples->calcularPreco(3));
